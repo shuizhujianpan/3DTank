@@ -96,15 +96,15 @@ function clearGame(){
   enemies=[];shells=[];particles=[];kills=0;
 }
 function start(){
-  clearGame();player=tank(true,0,12);
+  keys.clear();clearGame();player=tank(true,0,12);
   for(const [x,z] of [[-20,-30],[20,-30],[-34,-13],[34,-13],[-8,34]])enemies.push(tank(false,x,z));
   player.body.rotation.y=Math.PI;player.turret.rotation.y=Math.PI;
-  state='playing';el('screen').hidden=true;el('hud').hidden=false;updateHud();audio?.resume();
+  state='playing';el('screen').hidden=true;el('hud').hidden=false;updateHud();el('game').focus();audio?.resume();
 }
 function end(won){
-  state=won?'won':'lost';el('screen-title').innerHTML=won?'战斗<br><span>胜利</span>':'任务<br><span>失败</span>';
+  keys.clear();state=won?'won':'lost';el('screen-title').innerHTML=won?'战斗<br><span>胜利</span>':'任务<br><span>失败</span>';
   el('screen-copy').innerHTML=won?'敌方单位全部击毁。荒原暂时恢复平静。<br>你的战绩已写入这片战场。':'战车装甲已耗尽。重新整备，再次进入战场。';
-  el('button-label').textContent='再战一次';el('screen').hidden=false;el('hud').hidden=true;
+  el('button-label').textContent='再战一次';el('screen').hidden=false;el('hud').hidden=true;el('start').focus();
   sound(won?570:90,.7,won?'sine':'sawtooth',.11);
 }
 function blocked(x,z,r=1.5){
@@ -169,12 +169,13 @@ function update(dt){
   const target=player.group.position.clone().add(new THREE.Vector3(0,0,0));const offset=new THREE.Vector3(0,32,32);camera.position.lerp(target.add(offset),Math.min(1,dt*3));camera.lookAt(player.group.position.x,0,player.group.position.z);
 }
 const clock=new THREE.Clock();camera.position.set(0,39,48);camera.lookAt(0,0,0);
-function frame(){requestAnimationFrame(frame);const dt=Math.min(clock.getDelta(),.05);if(state==='playing')update(dt);else{camera.position.x=Math.sin(clock.elapsedTime*.1)*3;camera.lookAt(0,0,0)}renderer.render(scene,camera)}frame();
+const reducedMotion=matchMedia('(prefers-reduced-motion: reduce)');
+function frame(){requestAnimationFrame(frame);const dt=Math.min(clock.getDelta(),.05);if(state==='playing')update(dt);else{camera.position.x=reducedMotion.matches?0:Math.sin(clock.elapsedTime*.1)*3;camera.lookAt(0,0,0)}renderer.render(scene,camera)}frame();
 function resize(){camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();renderer.setSize(innerWidth,innerHeight)}addEventListener('resize',resize);
 addEventListener('pointermove',e=>{pointer.x=e.clientX/innerWidth*2-1;pointer.y=-(e.clientY/innerHeight*2-1)});
 addEventListener('pointerdown',e=>{if(e.button===0&&state==='playing')keys.add('mouse')});addEventListener('pointerup',()=>keys.delete('mouse'));
 addEventListener('blur',()=>keys.clear());
-addEventListener('keydown',e=>{const k=e.key.toLowerCase();if([' ','arrowup','arrowdown','arrowleft','arrowright'].includes(k))e.preventDefault();keys.add(k)});
+addEventListener('keydown',e=>{if(state!=='playing')return;const k=e.key.toLowerCase();if([' ','arrowup','arrowdown','arrowleft','arrowright'].includes(k))e.preventDefault();keys.add(k)});
 addEventListener('keyup',e=>keys.delete(e.key.toLowerCase()));
 el('start').addEventListener('click',start);
-el('sound').addEventListener('click',()=>{audioEnabled=!audioEnabled;el('sound').textContent='音效：'+(audioEnabled?'开':'关')});
+el('sound').addEventListener('click',()=>{audioEnabled=!audioEnabled;el('sound').textContent='音效：'+(audioEnabled?'开':'关');el('sound').setAttribute('aria-pressed',String(audioEnabled))});
