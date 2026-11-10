@@ -99,12 +99,12 @@ function start(){
   keys.clear();clearGame();player=tank(true,0,12);
   for(const [x,z] of [[-20,-30],[20,-30],[-34,-13],[34,-13],[-8,34]])enemies.push(tank(false,x,z));
   player.body.rotation.y=Math.PI;player.turret.rotation.y=Math.PI;
-  state='playing';el('screen').hidden=true;el('hud').hidden=false;updateHud();el('game').focus();audio?.resume();
+  state='playing';el('screen').hidden=true;el('hud').hidden=false;document.querySelector('.topbar').inert=false;updateHud();el('game').focus();audio?.resume();
 }
 function end(won){
   keys.clear();state=won?'won':'lost';el('screen-title').innerHTML=won?'战斗<br><span>胜利</span>':'任务<br><span>失败</span>';
   el('screen-copy').innerHTML=won?'敌方单位全部击毁。荒原暂时恢复平静。<br>你的战绩已写入这片战场。':'战车装甲已耗尽。重新整备，再次进入战场。';
-  el('button-label').textContent='再战一次';el('screen').hidden=false;el('hud').hidden=true;el('start').focus();
+  el('button-label').textContent='再战一次';document.querySelector('.topbar').inert=true;el('screen').hidden=false;el('hud').hidden=true;el('start').focus();
   sound(won?570:90,.7,won?'sine':'sawtooth',.11);
 }
 function blocked(x,z,r=1.5){
