@@ -83,7 +83,8 @@ function tank(isPlayer,x,z){
 }
 let player, enemies=[], shells=[], particles=[], state='ready', kills=0, audioEnabled=true, audio;
 const keys=new Set(), pointer=new THREE.Vector2(0,0), aim=new THREE.Vector3(0,0,-10), ray=new THREE.Raycaster();
-const aimPlane=new THREE.Plane(new THREE.Vector3(0,1,0),0);
+// Match the pointer ray to the turret line so aiming at a tank does not hit the ground behind it.
+const aimPlane=new THREE.Plane(new THREE.Vector3(0,1,0),-1.5);
 function sound(freq=180,duration=.13,type='sawtooth',gain=.06){
   if(!audioEnabled)return;
   try{audio??=new (window.AudioContext||window.webkitAudioContext)();const o=audio.createOscillator(),g=audio.createGain();o.type=type;o.frequency.setValueAtTime(freq,audio.currentTime);o.frequency.exponentialRampToValueAtTime(Math.max(30,freq*.42),audio.currentTime+duration);g.gain.setValueAtTime(gain,audio.currentTime);g.gain.exponentialRampToValueAtTime(.001,audio.currentTime+duration);o.connect(g);g.connect(audio.destination);o.start();o.stop(audio.currentTime+duration);}catch{}
