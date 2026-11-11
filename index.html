@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#10171c">
+  <link rel="icon" type="image/svg+xml" href="./favicon.svg">
+  <title>钢铁余晖 · 3D 坦克大战</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div id="game" aria-label="3D 坦克战场" tabindex="-1"></div>
+  <div class="vignette" aria-hidden="true"></div>
+  <header class="topbar" inert>
+    <div class="brand"><span class="brand-mark">◈</span><span>钢铁余晖<small>IRON AFTERGLOW</small></span></div>
+    <div class="mission"><span class="pulse"></span> 单人竞技场 <b> / </b> 歼灭敌军</div>
+    <button id="sound" class="icon-button" type="button" aria-pressed="true">音效：开</button>
+  </header>
+  <main id="hud" class="hud" hidden>
+    <div class="hud-left">
+      <div class="eyebrow">装甲状态 <span>ARMOR</span></div>
+      <div class="health-row"><strong id="health-text">100</strong><span>/ 100</span></div>
+      <div class="health-track"><div id="health-bar"></div></div>
+      <div class="hud-caption">保持移动，避免被包围</div>
+    </div>
+    <div class="hud-right">
+      <div class="eyebrow">战场情报 <span>STATUS</span></div>
+      <div class="stat"><span>敌方剩余</span><strong id="enemy-count">05</strong></div>
+      <div class="stat"><span>击毁数量</span><strong id="kill-count">00</strong></div>
+    </div>
+    <div class="crosshair" aria-hidden="true"><i></i><i></i><i></i><i></i><b></b></div>
+    <div class="bottom-hint">W A S D 移动 <em>·</em> 鼠标瞄准 <em>·</em> 左键 / 空格开火</div>
+  </main>
+  <section id="screen" class="screen" aria-live="polite">
+    <div class="screen-card">
+      <div class="top-rule"></div>
+      <div class="eyebrow hero-eyebrow">战役 01 <span> / </span> 单人竞技场</div>
+      <h1 id="screen-title">钢铁<br><span>余晖</span></h1>
+      <p id="screen-copy">驾驶战车穿越荒原，击毁所有敌方坦克。<br>火力已经就绪，战斗即刻开始。</p>
+      <button id="start" class="start-button" type="button"><span id="button-label">开始战斗</span><span class="arrow">↗</span></button>
+      <div class="controls"><span><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> 移动</span><span>鼠标 瞄准</span><span>左键 / 空格 开火</span></div>
+    </div>
+    <div class="screen-footer"><span>NO SAVE. NO SECOND CHANCE.</span><span>© IRON AFTERGLOW</span></div>
+  </section>
+  <div id="damage-flash" aria-hidden="true"></div>
+  <noscript>请启用 JavaScript 以运行游戏。</noscript>
+  <script type="module" src="app.js"></script>
+</body>
+</html>
