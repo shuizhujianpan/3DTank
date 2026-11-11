@@ -36,6 +36,24 @@ function cylinder(parent, r1,r2,h,material,x=0,y=0,z=0,segments=8) {
   const mesh = new THREE.Mesh(new THREE.CylinderGeometry(r1,r2,h,segments),material);
   mesh.position.set(x,y,z); mesh.castShadow=true; mesh.receiveShadow=true; parent.add(mesh); return mesh;
 }
+function makeRepairSupply() {
+  const supply = new THREE.Group();
+  const casing = mat(0x67745e,.62,.22), trim = mat(0x3b4840,.5,.36);
+  const glow = new THREE.MeshBasicMaterial({color:0x9df5ce});
+  cylinder(supply,1.08,1.2,.2,trim,0,.1,0,12);
+  box(supply,1.3,.7,1.12,casing,0,.55,0);
+  box(supply,1.42,.12,1.24,trim,0,.96,0);
+  box(supply,.92,.08,.1,glow,0,.68,.58);
+  const marker = new THREE.Group(); marker.position.set(0,1.42,.67); supply.add(marker);
+  box(marker,.2,.82,.16,glow);
+  box(marker,.82,.2,.16,glow);
+  const ring = new THREE.Mesh(new THREE.TorusGeometry(1.52,.045,8,40),glow);
+  ring.rotation.x=-Math.PI/2; ring.position.y=.04; supply.add(ring);
+  const lamp = new THREE.PointLight(0x78ffc8,2.4,12); lamp.position.set(0,2.8,0); supply.add(lamp);
+  supply.userData.marker=marker; supply.userData.ring=ring; supply.userData.notifiedAtFull=false;
+  return supply;
+}
+const repairSupplyModel = makeRepairSupply();
 const ground = box(world, 90,.8,90,sand,0,-.5,0); ground.castShadow=false;
 const grid = new THREE.GridHelper(88, 44, 0x6f6857, 0x6f6857); grid.position.y=-.07; grid.material.transparent=true; grid.material.opacity=.24; world.add(grid);
 for (let i=0;i<4;i++) {
@@ -81,7 +99,7 @@ function tank(isPlayer,x,z){
   const lamp=new THREE.PointLight(isPlayer?0x58cfc5:0xef7547,1.6,7);lamp.position.set(0,1.6,-1.8);group.add(lamp);
   return {group,body,turret,muzzle,hp:isPlayer?100:2,alive:true,fireTimer:0,speed:isPlayer?13:3.2};
 }
-let player, enemies=[], shells=[], particles=[], state='ready', kills=0, audioEnabled=true, audio;
+let player, enemies=[], shells=[], particles=[], repairSupply=null, state='ready', kills=0, audioEnabled=true, audio, feedbackTimer;
 const keys=new Set(), pointer=new THREE.Vector2(0,0), aim=new THREE.Vector3(0,0,-10), ray=new THREE.Raycaster();
 // Match the pointer ray to the turret line so aiming at a tank does not hit the ground behind it.
 const aimPlane=new THREE.Plane(new THREE.Vector3(0,1,0),-1.5);
@@ -90,8 +108,14 @@ function sound(freq=180,duration=.13,type='sawtooth',gain=.06){
   try{audio??=new (window.AudioContext||window.webkitAudioContext)();const o=audio.createOscillator(),g=audio.createGain();o.type=type;o.frequency.setValueAtTime(freq,audio.currentTime);o.frequency.exponentialRampToValueAtTime(Math.max(30,freq*.42),audio.currentTime+duration);g.gain.setValueAtTime(gain,audio.currentTime);g.gain.exponentialRampToValueAtTime(.001,audio.currentTime+duration);o.connect(g);g.connect(audio.destination);o.start();o.stop(audio.currentTime+duration);}catch{}
 }
 function updateHud(){el('health-text').textContent=Math.max(0,Math.ceil(player.hp));el('health-bar').style.width=Math.max(0,player.hp)+'%';el('enemy-count').textContent=String(enemies.filter(e=>e.alive).length).padStart(2,'0');el('kill-count').textContent=String(kills).padStart(2,'0');}
+function showPickupFeedback(message,duration=2600){
+  const feedback=el('pickup-feedback');clearTimeout(feedbackTimer);feedback.textContent=message;feedback.hidden=false;
+  feedbackTimer=setTimeout(()=>{feedback.hidden=true},duration);
+}
 function clearGame(){
   for(const t of [player,...enemies])if(t)scene.remove(t.group);
+  if(repairSupply)scene.remove(repairSupply);repairSupply=null;
+  clearTimeout(feedbackTimer);el('pickup-feedback').hidden=true;
   for(const s of shells)scene.remove(s.mesh);
   for(const p of particles)scene.remove(p.mesh);
   enemies=[];shells=[];particles=[];kills=0;
@@ -99,8 +123,9 @@ function clearGame(){
 function start(){
   keys.clear();clearGame();player=tank(true,0,12);
   for(const [x,z] of [[-20,-30],[20,-30],[-34,-13],[34,-13],[-8,34]])enemies.push(tank(false,x,z));
+  repairSupply=repairSupplyModel;repairSupply.position.set(0,0,-5);repairSupply.userData.notifiedAtFull=false;scene.add(repairSupply);
   player.body.rotation.y=Math.PI;player.turret.rotation.y=Math.PI;
-  state='playing';el('screen').hidden=true;el('hud').hidden=false;document.querySelector('.topbar').inert=false;updateHud();el('game').focus();audio?.resume();
+  state='playing';el('screen').hidden=true;el('hud').hidden=false;document.querySelector('.topbar').inert=false;updateHud();showPickupFeedback('维修补给已部署 · 装甲受损后靠近自动修复',3800);el('game').focus();audio?.resume();
 }
 function end(won){
   keys.clear();state=won?'won':'lost';el('screen-title').innerHTML=won?'战斗<br><span>胜利</span>':'任务<br><span>失败</span>';
@@ -139,6 +164,21 @@ function damage(t,amount){
 }
 function update(dt){
   ray.setFromCamera(pointer,camera);ray.ray.intersectPlane(aimPlane,aim);
+  if(repairSupply){
+    repairSupply.rotation.y+=dt*.22;
+    repairSupply.userData.marker.position.y=1.42+Math.sin(clock.elapsedTime*2.2)*.12;
+    repairSupply.userData.ring.rotation.z+=dt*.48;
+    const distance=Math.hypot(player.group.position.x-repairSupply.position.x,player.group.position.z-repairSupply.position.z);
+    if(distance<3.2){
+      if(player.hp<100){
+        const restored=Math.min(30,100-player.hp);player.hp+=restored;scene.remove(repairSupply);repairSupply=null;
+        spawnParticles(new THREE.Vector3(0,1,-5),0x9df5ce,24,10);sound(520,.32,'sine',.1);
+        showPickupFeedback(`维修补给已拾取 · 装甲 +${restored}`);updateHud();
+      }else if(!repairSupply.userData.notifiedAtFull){
+        repairSupply.userData.notifiedAtFull=true;showPickupFeedback('装甲已满 · 维修补给保留，受损后可再来');
+      }
+    }else repairSupply.userData.notifiedAtFull=false;
+  }
   const move=new THREE.Vector3(Number(keys.has('d')||keys.has('arrowright'))-Number(keys.has('a')||keys.has('arrowleft')),0,Number(keys.has('s')||keys.has('arrowdown'))-Number(keys.has('w')||keys.has('arrowup')));
   if(move.lengthSq()>0){move.normalize();const nx=player.group.position.x+move.x*player.speed*dt,nz=player.group.position.z+move.z*player.speed*dt;if(!blocked(nx,player.group.position.z))player.group.position.x=nx;if(!blocked(player.group.position.x,nz))player.group.position.z=nz;const angle=Math.atan2(-move.x,-move.z);player.body.rotation.y+=Math.atan2(Math.sin(angle-player.body.rotation.y),Math.cos(angle-player.body.rotation.y))*Math.min(1,dt*8)}
   const delta=aim.clone().sub(player.group.position);if(delta.lengthSq()>.5)player.turret.rotation.y=Math.atan2(-delta.x,-delta.z);
